@@ -4,6 +4,28 @@ import Foundation
 /// plaintext in the compiled binary. Each byte uses a position-dependent mask,
 /// which also avoids storing a recognizable plain hex/ASCII sequence.
 enum ProtectedConfiguration {
+    /// Decodes a value protected with a random per-byte mask and a second
+    /// position-dependent transform. This avoids embedding the token as a
+    /// plaintext string or as a single trivially XORed byte sequence.
+    private static func decodeMasked(
+        cipher: [UInt8],
+        mask: [UInt8],
+        checksum: UInt64
+    ) -> String {
+        guard cipher.count == mask.count else { return "" }
+        let bytes = zip(cipher, mask).enumerated().map { index, pair -> UInt8 in
+            let position = UInt8(truncatingIfNeeded: (index &* 29) &+ 0x53)
+            return (pair.0 &- position) ^ pair.1
+        }
+        guard let value = String(bytes: bytes, encoding: .utf8) else { return "" }
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        return hash == checksum ? value : ""
+    }
+
     private static func decode(_ bytes: [UInt8], seed: UInt8) -> String {
         let decoded = bytes.enumerated().map { index, byte in
             byte ^ (seed &+ UInt8(truncatingIfNeeded: index &* 17))
@@ -26,19 +48,27 @@ enum ProtectedConfiguration {
     }
 
     static var packageToken: String {
-        verified([
-            73, 33, 60, 51, 47, 233, 214, 228, 139, 188, 166, 131, 109, 80,
-            75, 125, 2, 43, 17, 55, 206, 173, 217, 140, 224, 179, 164, 81,
-            38, 118, 96, 36, 31, 41, 17, 161
-        ], seed: 0x39, checksum: 0xD5E374B223FE1676)
+        decodeMasked(
+            cipher: [
+                168, 117, 93, 9, 226, 217, 147, 142, 98, 48, 47, 209, 168, 104,
+                56, 47, 33, 207, 154, 85, 49, 197, 238, 230, 215, 63, 29, 239,
+                145, 214, 157, 102, 246, 221, 234, 87
+            ],
+            mask: [
+                37, 110, 183, 0, 73, 146, 219, 36, 109, 182, 255, 72, 145, 218,
+                35, 108, 181, 254, 71, 144, 217, 34, 107, 180, 253, 70, 143, 216,
+                33, 106, 179, 252, 69, 142, 215, 32
+            ],
+            checksum: 0xD5E374B223FE1676
+        )
     }
 
     static var catalogURL: URL? {
         URL(string: verified([
-            207, 204, 189, 170, 152, 198, 34, 49, 66, 41, 63, 10, 26, 235,
-            230, 136, 214, 184, 188, 146, 139, 126, 114, 86, 70, 126, 18, 6,
-            236, 230, 192, 153, 164, 183, 135, 156, 98, 123, 3, 78, 39, 16
-        ], seed: 0xA7, checksum: 0xE6838EDB09563D4F))
+            3, 8, 249, 238, 220, 250, 254, 205, 158, 109, 123, 78, 94, 39,
+            42, 68, 26, 252, 248, 214, 207, 162, 142, 138, 122, 58, 86, 66,
+            40, 42, 12, 85, 232, 243, 195, 216, 166, 135, 223, 114, 123, 84
+        ], seed: 0x6B, checksum: 0xE6838EDB09563D4F))
     }
 
     static var updateAPIURL: URL {

@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum AppDeviceIdentity {
-    private static let service = "com.apexipa.remote-access"
+    private static let service = "com.empireproxy.remote-access"
     private static let account = "fixed-device-id"
 
     static var value: String {

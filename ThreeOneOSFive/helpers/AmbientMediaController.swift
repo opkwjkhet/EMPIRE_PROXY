@@ -588,7 +588,7 @@ final class AmbientMediaController: ObservableObject {
             return absolute
         }
 
-        // Relative path: /APEX_IPA/uploads/x.jpg or uploads/x.jpg
+        // Relative path: /EMPIRE_PROXY/uploads/x.jpg or uploads/x.jpg
         guard relativeToCatalog else { return nil }
         guard let catalog = catalogBaseURL() else { return nil }
         return URL(string: s, relativeTo: catalog)?.absoluteURL

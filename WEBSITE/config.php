@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // Public live config for the app (no browser/CDN cache).
-// App data endpoint: https://minhios.apexproxy.store/config.php
+// Point Info.plist GameCatalogURL here, e.g. https://huutien.store/EMPIRE_PROXY/config.php
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

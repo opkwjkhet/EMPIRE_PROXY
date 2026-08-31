@@ -17,7 +17,7 @@ Nếu chưa tạo `database.config.php`, web dùng `config.json` để cài th�
 Trong trang **Giao diện**, có thể sửa tên, mô tả và link avatar của khối đầu trang chủ. Trong trang **Thanh tab**, mỗi ứng dụng quản lý một danh sách tab riêng; thêm, sửa hoặc xóa tab của ứng dụng này không làm thay đổi ứng dụng khác.
 
 1. Upload toàn bộ nội dung thư mục này lên hosting có PHP 8+.
-2. Mở `api.php` và đổi `ADMIN_PASSWORD` trước khi sử dụng.
+2. Cấu hình biến môi trường `APEX_ADMIN_PASSWORD` trên hosting trước khi sử dụng; không ghi mật khẩu thật vào source hoặc GitHub.
 3. Cấp quyền ghi cho `config.json` và thư mục `uploads/` nếu hosting yêu cầu.
 4. Mở **`index.php`** để xem landing page; trang quản trị nằm tại **`/admin/`**.
 5. Mở **`/admin/`**, đăng nhập mật khẩu → sidebar:
@@ -70,12 +70,12 @@ Luồng app:
 
 Ví dụ upload:
 ```
-/APEX_IPA/config.php
-/APEX_IPA/config.json
-/APEX_IPA/packages/aim-drag.3105
-/APEX_IPA/packages/location-magic.3105
-/APEX_IPA/packages/modskin.3105
-/APEX_IPA/packages/Aim-Body-FFMax.3105
+/EMPIRE_PROXY/config.php
+/EMPIRE_PROXY/config.json
+/EMPIRE_PROXY/packages/aim-drag.3105
+/EMPIRE_PROXY/packages/location-magic.3105
+/EMPIRE_PROXY/packages/modskin.3105
+/EMPIRE_PROXY/packages/Aim-Body-FFMax.3105
 ```
 
 Trong `config.json`:
@@ -84,7 +84,7 @@ Trong `config.json`:
   "id": "aim-body-ffmax",
   "name": "Aim Body FF Max",
   "category": "aim",
-  "fileURL": "https://huutien.store/APEX_IPA/packages/Aim-Body-FFMax.3105"
+  "fileURL": "https://huutien.store/EMPIRE_PROXY/packages/Aim-Body-FFMax.3105"
 }
 ```
 

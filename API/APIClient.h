@@ -4,11 +4,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // Public customer header — keep tiny. Secrets/endpoints live sealed inside libAPIClient.a.
-#define TSERVER_SDK_RELEASE_VERSION @"2.1.0"
+#define TSERVER_SDK_RELEASE_VERSION @"2.1.1"
 #define APICLIENT_HAS_TERMINAL_EVENTS 1
 
-// Package token from portal Packages. Prefer APIClientConfigure(@"pkg_...") in source.
-static NSString * const kAPIClientPackageToken = @"pkg_RgITJnEwhFlEKqzKC3vL1QWU3PWlFCj-";
+// Configured at runtime from ProtectedConfiguration.swift.
+// Keep the package token out of this public header and the compiled string table.
+static NSString * const kAPIClientPackageToken = @"";
 
 FOUNDATION_EXTERN void APIClientConfigure(NSString * _Nullable packageToken);
 // onRevoked is also delivered for an initial terminal denial so legacy

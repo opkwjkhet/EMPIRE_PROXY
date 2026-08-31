@@ -5,8 +5,8 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-// ĐỔI MẬT KHẨU NÀY TRƯỚC KHI UP HOSTING.
-const ADMIN_PASSWORD = 'htios2590';
+// Configure this secret on the host; never commit the real password.
+$adminPassword = trim((string)getenv('APEX_ADMIN_PASSWORD'));
 $configFile = __DIR__ . '/config.json';
 $uploadDir = __DIR__ . '/uploads';
 require_once __DIR__ . '/database.php';
@@ -28,7 +28,8 @@ if ($action === 'read') {
 }
 
 $password = $_SERVER['HTTP_X_ADMIN_PASSWORD'] ?? ($_POST['password'] ?? '');
-if (!hash_equals(ADMIN_PASSWORD, (string)$password)) fail('Sai mật khẩu', 401);
+if ($adminPassword === '') fail('Máy chủ chưa cấu hình APEX_ADMIN_PASSWORD', 503);
+if (!hash_equals($adminPassword, (string)$password)) fail('Sai mật khẩu', 401);
 
 // Admin login check (no side effects).
 if ($action === 'verify') {
@@ -111,17 +112,16 @@ if ($action === 'upload') {
     if ($ext === '' || !in_array($ext, $allowed, true)) {
         fail('Định dạng không hỗ trợ (nhạc/ảnh/video/.3105/.ipa)');
     }
-    if ($ext === 'ipa' && preg_match('/(\d+\.\d+\.\d+)/', $name, $versionMatch)) {
-        // Normalize both APEX-IPA-1.0.1.ipa and APEX-IPA-[1.0.1].ipa
-        // to the required downloadable filename with square brackets.
-        $name = 'APEX-IPA-[' . $versionMatch[1] . '].ipa';
+    if ($ext === 'ipa') {
+        // Keep the public IPA filename stable across uploaded releases.
+        $name = 'EMPIRE PROXY.ipa';
     } else {
         $name = time() . '-' . ($name ?: ('file.' . $ext));
     }
     if (!move_uploaded_file($_FILES['file']['tmp_name'], $uploadDir . '/' . $name)) fail('Không thể lưu file', 500);
 
     // Absolute URL so the iOS app loads wallpaper/music without relative-path bugs
-    // (relative /APEX_IPA/uploads/... was a common cause of black backgrounds).
+    // (relative /EMPIRE_PROXY/uploads/... was a common cause of black backgrounds).
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || ((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || ((string)($_SERVER['SERVER_PORT'] ?? '') === '443');

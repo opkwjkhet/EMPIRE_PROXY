@@ -14,7 +14,6 @@ struct ThreeOneOSFiveApp: App {
     @State private var isInitialLoading = true
     @State private var initialLoadingProgress = 0.0
     @State private var initialLoadingMessage = "Đang kết nối máy chủ"
-    @State private var connectionFailed = false
     @State private var licenseAuthorized = false
     @State private var licenseAuthorizationStarted = false
     @State private var protectedContentStarted = false
@@ -73,7 +72,6 @@ struct ThreeOneOSFiveApp: App {
     private func refreshRemoteContent(presentNotice: Bool) {
         Task {
             let connected = await GameCatalogStore.shared.refresh(prefetch: true)
-            await MainActor.run { connectionFailed = !connected }
             guard connected else { return }
             guard presentNotice else { return }
             await MainActor.run {
@@ -101,9 +99,18 @@ struct ThreeOneOSFiveApp: App {
     private func startLicenseAuthorization() {
         guard !licenseAuthorizationStarted else { return }
         licenseAuthorizationStarted = true
+        // Leave the screen to libAPIClient while it handles key entry/status.
+        isInitialLoading = false
 
-        APIClientConfigure(ProtectedConfiguration.packageToken)
-        APIClientStartAuthorization({
+        let packageToken = ProtectedConfiguration.packageToken
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard packageToken.hasPrefix("pkg_"), packageToken.count >= 24 else {
+            revokeLicenseAccess()
+            return
+        }
+
+        APIClientConfigure(packageToken)
+        APIClientStartAuthorizationWithEvents({
             APIClientPerformAuthorized("paid", {
                 DispatchQueue.main.async {
                     licenseAuthorized = true
@@ -113,6 +120,8 @@ struct ThreeOneOSFiveApp: App {
                 revokeLicenseAccess()
             })
         }, {
+            revokeLicenseAccess()
+        }, { _ in
             revokeLicenseAccess()
         })
     }
@@ -136,11 +145,11 @@ struct ThreeOneOSFiveApp: App {
         Task {
             await MainActor.run {
                 AmbientMediaController.shared.setPlaybackAllowed(false)
+                isInitialLoading = true
                 initialLoadingProgress = 0.04
                 initialLoadingMessage = "Đang tải cấu hình"
             }
             let connected = await GameCatalogStore.shared.refresh(prefetch: false)
-            connectionFailed = !connected
             guard connected else {
                 isInitialLoading = false
                 return
@@ -163,7 +172,6 @@ struct ThreeOneOSFiveApp: App {
                 initialLoadingMessage = message
             }
             guard mediaReady else {
-                connectionFailed = true
                 isInitialLoading = false
                 return
             }
@@ -226,7 +234,7 @@ struct ThreeOneOSFiveApp: App {
                     .preferredColorScheme(preferredScheme)
                     .tint(accentColor)
                     .opacity(showOnboarding || !licenseAuthorized ? 0 : 1)
-                    .allowsHitTesting(licenseAuthorized && !showOnboarding && !showNotice && !connectionFailed && !gameCatalog.catalog.resolvedMaintenanceEnabled)
+                    .allowsHitTesting(licenseAuthorized && !showOnboarding && !showNotice && !gameCatalog.catalog.resolvedMaintenanceEnabled)
 
                 if showOnboarding {
                     OnboardingView {
@@ -272,24 +280,11 @@ struct ThreeOneOSFiveApp: App {
                         .zIndex(10)
                 }
 
-                if !isInitialLoading && connectionFailed {
-                    BlockingStatusView(
-                        title: "NO INTERNET",
-                        message: "Không thể kết nối máy chủ dữ liệu.",
-                        symbol: "wifi.slash",
-                        retryAction: {
-                            initialLoadingProgress = 0
-                            isInitialLoading = true
-                            loadInitialContent()
-                        }
-                    )
-                    .zIndex(11)
-                } else if !isInitialLoading && gameCatalog.catalog.resolvedMaintenanceEnabled {
+                if !isInitialLoading && gameCatalog.catalog.resolvedMaintenanceEnabled {
                     BlockingStatusView(
                         title: gameCatalog.catalog.resolvedMaintenanceTitle,
                         message: gameCatalog.catalog.resolvedMaintenanceMessage,
-                        symbol: "wrench.and.screwdriver.fill",
-                        retryAction: nil
+                        symbol: "wrench.and.screwdriver.fill"
                     )
                     .zIndex(11)
                 }
@@ -360,7 +355,6 @@ private struct BlockingStatusView: View {
     let title: String
     let message: String
     let symbol: String
-    let retryAction: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -371,11 +365,6 @@ private struct BlockingStatusView: View {
                     .foregroundStyle(AppTheme.accent)
                 Text(title).font(.title2.weight(.black)).multilineTextAlignment(.center)
                 Text(message).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                if let retryAction {
-                    Button("RETRY", action: retryAction)
-                        .buttonStyle(.borderedProminent)
-                        .tint(AppTheme.accent)
-                }
             }
             .padding(28)
             .frame(maxWidth: 440)
