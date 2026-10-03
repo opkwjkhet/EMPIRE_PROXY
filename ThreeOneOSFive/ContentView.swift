@@ -195,7 +195,6 @@ private struct DashboardView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
     @State private var showSettings = false
-    @State private var licenseKeyCopied = false
     @StateObject private var catalogStore = GameCatalogStore.shared
     @Binding var cleanerEnabled: Bool
     @AppStorage(AppThemePreferences.accentStorageKey) private var accentRaw = AppThemePreferences.defaultAccent.rawValue
@@ -212,7 +211,6 @@ private struct DashboardView: View {
                     VStack(spacing: 18) {
                         heroCard
                         deviceCard
-                        licenseCard
                         socialCard
                         creditsCard
                     }
@@ -327,86 +325,6 @@ private struct DashboardView: View {
                 .padding(.top, 2)
         }
         .apexCard()
-    }
-
-    private var licenseCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader(title: "License", systemImage: "checkmark.shield.fill")
-
-            Button {
-                UIPasteboard.general.string = fullLicenseKey
-                licenseKeyCopied = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    licenseKeyCopied = false
-                }
-            } label: {
-                licenseRow(
-                    label: "Key",
-                    value: licenseKeyText,
-                    trailingSymbol: licenseKeyCopied ? "checkmark" : "doc.on.doc"
-                )
-            }
-            .buttonStyle(.plain)
-
-            Divider().opacity(0.5)
-            licenseRow(label: "Hạn", value: APIClientRenderTemplate("%tserver_timekeyt%"))
-            Divider().opacity(0.5)
-            licenseRow(label: "Thiết bị", value: APIClientRenderTemplate("%tserver_max_devices%"))
-            Divider().opacity(0.5)
-            licenseRow(
-                label: "Trạng thái",
-                value: APIClientRenderTemplate("%tserver_key_status%"),
-                singleLine: true
-            )
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .apexCard()
-    }
-
-    private var licenseKeyText: String {
-        APIClientRenderTemplate("%tserver_key%")
-    }
-
-    private var fullLicenseKey: String {
-        let info = APIClient.currentKeyInfo() as? [String: Any] ?? [:]
-        for field in ["licenseKey", "license_key", "key"] {
-            if let value = info[field] as? String,
-               !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return value
-            }
-        }
-        return APIClient.currentKeyText()
-    }
-
-    private func licenseRow(
-        label: String,
-        value: String,
-        trailingSymbol: String? = nil,
-        singleLine: Bool = false
-    ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text(label + ":")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(width: 82, alignment: .leading)
-
-            Text(value)
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .lineLimit(singleLine ? 1 : nil)
-                .minimumScaleFactor(singleLine ? 0.72 : 1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let trailingSymbol {
-                Image(systemName: trailingSymbol)
-                    .foregroundStyle(.white)
-                    .accessibilityHidden(true)
-            }
-        }
-        .font(.subheadline.monospaced())
-        .contentShape(Rectangle())
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var socialCard: some View {

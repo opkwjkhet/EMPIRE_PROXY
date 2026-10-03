@@ -4,28 +4,6 @@ import Foundation
 /// plaintext in the compiled binary. Each byte uses a position-dependent mask,
 /// which also avoids storing a recognizable plain hex/ASCII sequence.
 enum ProtectedConfiguration {
-    /// Decodes a value protected with a random per-byte mask and a second
-    /// position-dependent transform. This avoids embedding the token as a
-    /// plaintext string or as a single trivially XORed byte sequence.
-    private static func decodeMasked(
-        cipher: [UInt8],
-        mask: [UInt8],
-        checksum: UInt64
-    ) -> String {
-        guard cipher.count == mask.count else { return "" }
-        let bytes = zip(cipher, mask).enumerated().map { index, pair -> UInt8 in
-            let position = UInt8(truncatingIfNeeded: (index &* 29) &+ 0x53)
-            return (pair.0 &- position) ^ pair.1
-        }
-        guard let value = String(bytes: bytes, encoding: .utf8) else { return "" }
-        var hash: UInt64 = 0xcbf29ce484222325
-        for byte in value.utf8 {
-            hash ^= UInt64(byte)
-            hash = hash &* 0x100000001b3
-        }
-        return hash == checksum ? value : ""
-    }
-
     private static func decode(_ bytes: [UInt8], seed: UInt8) -> String {
         let decoded = bytes.enumerated().map { index, byte in
             byte ^ (seed &+ UInt8(truncatingIfNeeded: index &* 17))
@@ -45,22 +23,6 @@ enum ProtectedConfiguration {
             hash = hash &* 0x100000001b3
         }
         return hash == checksum ? value : ""
-    }
-
-    static var packageToken: String {
-        decodeMasked(
-            cipher: [
-                168, 117, 93, 9, 226, 217, 147, 142, 98, 48, 47, 209, 168, 104,
-                56, 47, 33, 207, 154, 85, 49, 197, 238, 230, 215, 63, 29, 239,
-                145, 214, 157, 102, 246, 221, 234, 87
-            ],
-            mask: [
-                37, 110, 183, 0, 73, 146, 219, 36, 109, 182, 255, 72, 145, 218,
-                35, 108, 181, 254, 71, 144, 217, 34, 107, 180, 253, 70, 143, 216,
-                33, 106, 179, 252, 69, 142, 215, 32
-            ],
-            checksum: 0xD5E374B223FE1676
-        )
     }
 
     static var catalogURL: URL? {

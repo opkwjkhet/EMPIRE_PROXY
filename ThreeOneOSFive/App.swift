@@ -14,8 +14,6 @@ struct ThreeOneOSFiveApp: App {
     @State private var isInitialLoading = true
     @State private var initialLoadingProgress = 0.0
     @State private var initialLoadingMessage = "Đang kết nối máy chủ"
-    @State private var licenseAuthorized = false
-    @State private var licenseAuthorizationStarted = false
     @State private var protectedContentStarted = false
     /// After user taps OK, don't force the notice again until next background→active.
     @State private var noticeDismissedUntilNextEnter = false
@@ -96,48 +94,12 @@ struct ThreeOneOSFiveApp: App {
         )
     }
 
-    private func startLicenseAuthorization() {
-        guard !licenseAuthorizationStarted else { return }
-        licenseAuthorizationStarted = true
-        // Leave the screen to libAPIClient while it handles key entry/status.
-        isInitialLoading = false
-
-        let packageToken = ProtectedConfiguration.packageToken
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard packageToken.hasPrefix("pkg_"), packageToken.count >= 24 else {
-            revokeLicenseAccess()
-            return
-        }
-
-        APIClientConfigure(packageToken)
-        APIClientStartAuthorizationWithEvents({
-            APIClientPerformAuthorized("paid", {
-                DispatchQueue.main.async {
-                    licenseAuthorized = true
-                    startProtectedContentIfNeeded()
-                }
-            }, {
-                revokeLicenseAccess()
-            })
-        }, {
-            revokeLicenseAccess()
-        }, { _ in
-            revokeLicenseAccess()
-        })
-    }
-
     private func startProtectedContentIfNeeded() {
         guard !protectedContentStarted else { return }
         protectedContentStarted = true
         loadInitialContent()
         if !showOnboarding {
             appState.detectSupport()
-        }
-    }
-
-    private func revokeLicenseAccess() {
-        DispatchQueue.main.async {
-            licenseAuthorized = false
         }
     }
 
@@ -233,8 +195,8 @@ struct ThreeOneOSFiveApp: App {
                     .environment(\.locale, language.locale)
                     .preferredColorScheme(preferredScheme)
                     .tint(accentColor)
-                    .opacity(showOnboarding || !licenseAuthorized ? 0 : 1)
-                    .allowsHitTesting(licenseAuthorized && !showOnboarding && !showNotice && !gameCatalog.catalog.resolvedMaintenanceEnabled)
+                    .opacity(showOnboarding ? 0 : 1)
+                    .allowsHitTesting(!showOnboarding && !showNotice && !gameCatalog.catalog.resolvedMaintenanceEnabled)
 
                 if showOnboarding {
                     OnboardingView {
@@ -296,15 +258,12 @@ struct ThreeOneOSFiveApp: App {
             }
             .preferredColorScheme(preferredScheme)
             .tint(accentColor)
-            .displayIdentityAttribution(isPresented: $showAttribution, enabled: licenseAuthorized && !showOnboarding && !showNotice)
+            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding && !showNotice)
             .sheet(isPresented: $showAttribution) {
                 DisplayAttributionSheet()
             }
             .onAppear {
-                startLicenseAuthorization()
-            }
-            .onOpenURL { url in
-                _ = APIClientHandleOpenURL(url)
+                startProtectedContentIfNeeded()
             }
             .onChange(of: scenePhase) { phase in
                 AmbientMediaController.shared.handleScenePhase(phase)
@@ -316,7 +275,6 @@ struct ThreeOneOSFiveApp: App {
                     return
                 }
                 guard phase == .active else { return }
-                guard licenseAuthorized else { return }
                 // Re-fetch config so website edits appear without rebuilding IPA.
                 refreshRemoteContent(presentNotice: !showOnboarding)
                 if !showOnboarding {
